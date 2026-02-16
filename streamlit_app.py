@@ -27,7 +27,7 @@ from app import JobAgent  # noqa: E402
 # ------------------------------------------------------------------ #
 
 st.set_page_config(
-    page_title="PathFind AI",
+    page_title="Pathfind AI",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -106,7 +106,7 @@ agent: JobAgent = st.session_state.agent
 # ------------------------------------------------------------------ #
 
 with st.sidebar:
-    st.markdown("## 🤖 PathFind AI")
+    st.markdown("## 🤖 Pathfind AI")
     st.caption("Intelligent Job Search Assistant")
     st.divider()
 

@@ -1784,7 +1784,7 @@ class JobAgent:
 
 def main():
     print("=" * 60)
-    print("🤖 PathFind AI — Intelligent Job Search Assistant")
+    print("🤖 Pathfind AI — Intelligent Job Search Assistant")
     print("=" * 60)
     print("\nI can help you with:")
     print("  🔍 Search for jobs    → 'Find ML engineer jobs at Google'")
