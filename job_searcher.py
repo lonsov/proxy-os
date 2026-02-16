@@ -4,23 +4,20 @@
 import json
 import os
 from dotenv import load_dotenv
-try:
-    from linkup_sdk import LinkupClient
-except ImportError:
-    from linkup import LinkupClient
+from browser_use_client import BrowserUseClient
 
 load_dotenv()
 
 
 class JobSearcher:
-    """Manages job search operations using Linkup API."""
+    """Manages job search operations using Browser Use."""
     
     def __init__(self):
-        """Initialize job searcher with Linkup API key from .env."""
-        self.api_key = os.getenv("LINKUP_API_KEY")
+        """Initialize job searcher with Google API key from .env."""
+        self.api_key = os.getenv("GOOGLE_API_KEY")
         if not self.api_key:
-            raise ValueError("LINKUP_API_KEY not found in .env")
-        self.client = LinkupClient(api_key=self.api_key)
+            raise ValueError("GOOGLE_API_KEY not found in .env")
+        self.client = BrowserUseClient(api_key=self.api_key)
     
     def execute_search(self, params: dict) -> str:
         """Execute job search with structured output schema."""
@@ -102,14 +99,14 @@ CRITICAL RULES:
                 "required": ["jobs", "totalJobsFound", "searchDate"]
             }
             
-            # Call Linkup API with structured output
+            # Call Browser Use with structured output
             response = self.client.search(
                 query=query,
                 depth="standard",
                 output_type="structured",
-                include_images=False,
                 structured_output_schema=json.dumps(schema),
                 include_sources=False,
+                include_images=False,
             )
             
             # Don't print raw response - let agent format it for display

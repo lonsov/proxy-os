@@ -126,7 +126,7 @@ class JobPostingIntake:
 
         # Raw job descriptions from selected-job intake usually do not follow
         # LinkUp sourcedAnswer formatting, so we use an LLM parser first there.
-        if not _looks_like_linkup_summary(answer):
+        if not _looks_like_search_summary(answer):
             llm_fields = _parse_jd_with_llm(answer)
             parse_mode = "llm" if _has_meaningful_llm_parse(llm_fields) else "llm_fallback_regex"
             company = _pick_non_na(llm_fields.get("company_name"), company)
@@ -198,7 +198,7 @@ def _pick_non_na(primary: Optional[str], fallback: Optional[str]) -> str:
     return _NA
 
 
-def _looks_like_linkup_summary(answer: str) -> bool:
+def _looks_like_search_summary(answer: str) -> bool:
     if not answer or answer == _NA:
         return False
     if _HIRING_RE.match(answer):
@@ -604,8 +604,8 @@ class CompanyResearchAgent:
     a structured, citation-backed company research report for resume tailoring.
     """
 
-    def __init__(self, linkup_client: Any, *, defaults: Optional[CompanyResearchDefaults] = None):
-        self._client = linkup_client
+    def __init__(self, search_client: Any, *, defaults: Optional[CompanyResearchDefaults] = None):
+        self._client = search_client
         self._defaults = defaults or CompanyResearchDefaults()
 
     def research_company(

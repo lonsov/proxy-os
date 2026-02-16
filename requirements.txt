@@ -11,8 +11,8 @@ pytest
 # HuggingFace LLM
 huggingface_hub
 
-# Linkup (correct SDK)
-linkup-sdk
+# Browser automation/search
+browser-use
 
 # PDF handling
 pdfminer.six

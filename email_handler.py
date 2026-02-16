@@ -10,6 +10,7 @@ from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
+from browser_use_client import BrowserUseClient
 
 # Google API Client Imports
 # pip install google-auth google-auth-oauthlib google-api-python-client
@@ -42,7 +43,6 @@ class EmailHandler:
         "https://api-inference.huggingface.co/v1/chat/completions",
     ]
     HF_MODEL = "meta-llama/Llama-3.3-70B-Instruct"
-    LINKUP_API_URL = "https://api.linkup.so/v1/search"
 
     def __init__(
         self,
@@ -57,7 +57,8 @@ class EmailHandler:
         #   export HF_MODEL="meta-llama/Llama-3.3-70B-Instruct"
         #   export HF_MODEL="meta-llama/Llama-3.3-70B-Instruct:fireworks-ai"
         self.hf_model = os.getenv("HF_MODEL", self.HF_MODEL)
-        self.linkup_api_key = os.getenv("LINKUP_API_KEY", "")
+        self.google_api_key = os.getenv("GOOGLE_API_KEY", "")
+        self.browser_client = BrowserUseClient(api_key=self.google_api_key) if self.google_api_key else None
         self.creds = None
         self.service = None
         self.credentials_path = credentials_path
@@ -280,32 +281,23 @@ class EmailHandler:
             return ""
         return s if len(s) <= limit else s[:limit]
 
-    def _call_linkup_structured(self, *, query: str, schema: Dict[str, Any], depth: str = "deep") -> Dict[str, Any]:
+    def _call_browser_use_structured(self, *, query: str, schema: Dict[str, Any], depth: str = "deep") -> Dict[str, Any]:
         """
-        Calls Linkup /v1/search using structured output.
+        Calls Browser Use using structured output.
         Returns parsed JSON dict when successful.
         """
-        if not self.linkup_api_key:
-            return {"error": "Missing LINKUP_API_KEY"}
-
-        headers = {
-            "Authorization": f"Bearer {self.linkup_api_key}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "q": query,
-            "depth": depth,
-            "outputType": "structured",
-            "structuredOutputSchema": json.dumps(schema),
-            "includeSources": False,
-            "includeImages": False,
-            "includeInlineCitations": False,
-            "maxResults": 12,
-        }
+        if not self.browser_client:
+            return {"error": "Missing GOOGLE_API_KEY"}
         try:
-            resp = requests.post(self.LINKUP_API_URL, headers=headers, json=payload, timeout=60)
-            resp.raise_for_status()
-            out = resp.json()
+            out = self.browser_client.search(
+                query=query,
+                depth=depth,
+                output_type="structured",
+                structured_output_schema=json.dumps(schema),
+                include_sources=False,
+                include_images=False,
+                max_results=12,
+            )
             if isinstance(out, dict):
                 return out
             return {"raw": out}
@@ -504,7 +496,7 @@ class EmailHandler:
     def _extract_all_emails_from_text(text: str) -> List[str]:
         """
         Pull all email-address-shaped strings from arbitrary text.
-        Useful for scraping emails out of Linkup answer blobs.
+        Useful for scraping emails out of Browser Use answer blobs.
         """
         if not text:
             return []
@@ -1069,13 +1061,13 @@ class EmailHandler:
         min_emails: int = 3,
     ) -> Dict[str, Any]:
         """
-        Use Linkup to find recruiter contact details for a specific company and role.
+        Use Browser Use to find recruiter contact details for a specific company and role.
 
         Improvements over the original:
         - Uses a richer schema that asks for *multiple* contacts per query (name, email,
           title, linkedin_url) reducing the number of API calls needed.
         - Better-targeted queries that explicitly mention LinkedIn, career pages, etc.
-        - Extracts emails and LinkedIn URLs from the raw Linkup response text as a
+        - Extracts emails and LinkedIn URLs from the raw Browser Use response text as a
           fallback when structured output is incomplete.
         - Deduplicates contacts by normalized name to avoid returning the same person twice.
         - Discovers corporate email domains from early results and uses them to validate
@@ -1237,9 +1229,9 @@ class EmailHandler:
             })
             return True
 
-        def _process_linkup_response(out: Dict[str, Any], *, query: str) -> None:
+        def _process_search_response(out: Dict[str, Any], *, query: str) -> None:
             """
-            Process a Linkup structured response.
+            Process a Browser Use structured response.
             Extracts contacts from the structured output AND scrapes the raw
             response text for emails/LinkedIn URLs that the model may have missed.
             """
@@ -1295,8 +1287,8 @@ class EmailHandler:
 
         def search_queries(queries: List[str], *, tier: str) -> None:
             for q in queries:
-                out = self._call_linkup_structured(query=q, schema=schema, depth="deep")
-                _process_linkup_response(out, query=q)
+                out = self._call_browser_use_structured(query=q, schema=schema, depth="deep")
+                _process_search_response(out, query=q)
 
         # Execute tiered search.
         search_queries(role_specific_queries, tier="role_specific")
@@ -1463,7 +1455,7 @@ class EmailHandler:
           {"subject": "...", "body": "..."}
 
         Inputs are intentionally simple strings to make integration easy with whatever
-        Linkup schemas your teammate uses.
+        structured schemas your teammate uses.
         """
         fit = self.build_job_fit_profile(
             job_description=job_description,
@@ -1569,7 +1561,7 @@ class EmailHandler:
         End-to-end flow for this responsibility:
         1) Parse JD
         2) Parse Resume
-        3) Find recruiter email via Linkup
+        3) Find recruiter email via Browser Use
         4) Draft personalized outreach email
 
         Output:

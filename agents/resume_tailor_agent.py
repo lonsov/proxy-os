@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from document_handler import DocumentHandler
-from linkup_client import linkup_search
+from browser_use_client import browser_use_search
 from document.pdf_export import export_resume_to_pdf_ats
 
 # Optional DOCX export
@@ -48,7 +48,7 @@ def _safe_text(s: Any) -> str:
 # ---------------------------
 def _fetch_job_description_if_url(jd_or_url: str) -> str:
     """
-    If the user provides a URL, use Linkup to open and extract the job description text.
+    If the user provides a URL, use Browser Use to open and extract the job description text.
     Otherwise treat as plain text.
     """
     jd_or_url = (jd_or_url or "").strip()
@@ -61,9 +61,9 @@ def _fetch_job_description_if_url(jd_or_url: str) -> str:
         f"URL: {jd_or_url}"
     )
 
-    resp = linkup_search(query=query, depth="deep", output_type="searchResults", max_results=3)
+    resp = browser_use_search(query=query, depth="deep", output_type="searchResults", max_results=3)
 
-    # Best-effort extraction of text fields from Linkup response
+    # Best-effort extraction of text fields from Browser Use response
     if hasattr(resp, "model_dump"):
         resp = resp.model_dump()
 

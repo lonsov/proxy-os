@@ -151,7 +151,7 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-    st.caption("Powered by Llama 3 70B + Linkup API")
+    st.caption("Powered by Llama 3 70B + Browser Use")
 
 
 # ------------------------------------------------------------------ #

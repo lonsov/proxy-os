@@ -10,7 +10,7 @@ def test_get_context_returns_recent_items(tmp_path):
     user = "u1"
 
     t1 = memory.store_turn(session, "user", "hello", user_id=user, db_path=db)
-    a1 = memory.store_artifact(session, "linkup_research", {"q": "x"}, source_turn_id=t1, user_id=user, db_path=db)
+    a1 = memory.store_artifact(session, "browser_use_research", {"q": "x"}, source_turn_id=t1, user_id=user, db_path=db)
     f1 = memory.store_fact(session, "preference", "target_company", "Acme", source_artifact_id=a1, user_id=user, db_path=db)
 
     ctx = memory.get_context(session, user_id=user, db_path=db, k_recent_turns=5, k_recent_artifacts=5, k_recent_facts=5)

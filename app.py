@@ -16,7 +16,7 @@ except ModuleNotFoundError:
     InferenceClient = None
 
 import memory
-from linkup_client import LinkupJobSearch
+from browser_use_client import BrowserUseClient
 from company_research_agent import CompanyResearchAgent, JobPostingIntake
 from agents.resume_tailor_agent import TailorRequest, tailor_resume, _fetch_job_description_if_url
 from agents.role_search_agent import search_roles, RoleSearchQuery
@@ -130,7 +130,7 @@ TOOLS = [
     },
     {
         "name": "recruiter_finder",
-        "description": "Find recruiter contact info (emails, LinkedIn) for a company and role, then draft a personalized outreach email. Uses Linkup to discover recruiters and LLM to compose the email.",
+        "description": "Find recruiter contact info (emails, LinkedIn) for a company and role, then draft a personalized outreach email. Uses Browser Use to discover recruiters and LLM to compose the email.",
         "parameters": {
             "company": "The company to find recruiters at",
             "role": "The role you're applying for",
@@ -222,7 +222,7 @@ def execute_job_searcher(params: dict) -> str:
         role = "Machine Learning Engineer"
 
     try:
-        # Use JobSearcher with Linkup structured output
+        # Use JobSearcher with Browser Use structured output
         searcher = JobSearcher()
         result_json = searcher.execute_search({
             "role": role,
@@ -293,8 +293,8 @@ def execute_company_profiler(params: dict) -> str:
 
     warnings = []
     try:
-        searcher = LinkupJobSearch()
-        agent = CompanyResearchAgent(linkup_client=searcher.client)
+        search_client = BrowserUseClient()
+        agent = CompanyResearchAgent(search_client=search_client)
 
         if not company or company == "NA":
             return json.dumps(
@@ -710,9 +710,9 @@ class JobAgent:
         if not self.hf_token:
             raise ValueError("HF_TOKEN not found in .env")
 
-        self.linkup_api_key = os.getenv("LINKUP_API_KEY")
-        if not self.linkup_api_key:
-            raise ValueError("LINKUP_API_KEY not found in .env")
+        self.google_api_key = os.getenv("GOOGLE_API_KEY")
+        if not self.google_api_key:
+            raise ValueError("GOOGLE_API_KEY not found in .env")
 
         # Allow overriding the HF model id via env var.
         self.hf_model = os.getenv("HF_MODEL", "meta-llama/Meta-Llama-3-70B-Instruct")
@@ -845,13 +845,18 @@ class JobAgent:
         if not job_url or job_url == "NA":
             return {"status": "error", "error": "No job URL available for extraction."}
         try:
-            searcher = LinkupJobSearch()
-            return searcher.extract_job_description_from_url(
-                job_url=job_url,
-                role=(selected_job.get("title") or "").strip() or None,
-                company=(selected_job.get("company") or "").strip() or None,
-                existing_jd_text=existing_jd_text or None,
-            )
+            jd_text = existing_jd_text or (_fetch_job_description_if_url(job_url) or "").strip()
+            if not jd_text:
+                return {"status": "error", "error": "No job description text could be extracted."}
+            return {
+                "status": "success",
+                "job_url": job_url,
+                "role": (selected_job.get("title") or "").strip() or None,
+                "company": (selected_job.get("company") or "").strip() or None,
+                "jd_text": jd_text,
+                "source_count": 1,
+                "sources": [{"url": job_url, "name": selected_job.get("title") or "", "snippet": ""}],
+            }
         except Exception as e:
             return {"status": "error", "error": f"JD extraction failed: {type(e).__name__}: {e}"}
 
@@ -1327,7 +1332,7 @@ class JobAgent:
         # Handle awaiting job link after 'tailor my resume'
         if getattr(self, 'awaiting_jd_text', False):
             job_link = user_message.strip()
-            # Extract job description from link using linkup
+            # Extract job description from link using Browser Use
             jd_text = _fetch_job_description_if_url(job_link)
             tailoring_msg = self._execute_tool_and_respond(
                 tool_name="resume_tailor",
@@ -1436,7 +1441,7 @@ class JobAgent:
                 # Try to extract JD text from the job URL
                 jd_text = ""
 
-                # First attempt: _extract_jd_from_selected_job_url (Linkup structured extraction)
+                # First attempt: _extract_jd_from_selected_job_url (Browser Use structured extraction)
                 extracted = self._extract_jd_from_selected_job_url(selected_job)
                 if isinstance(extracted, dict) and extracted.get("status") == "success":
                     jd_text = (extracted.get("jd_text") or "").strip()
