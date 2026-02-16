@@ -21,9 +21,16 @@ class JobSearcher:
     
     def execute_search(self, params: dict) -> str:
         """Execute job search with structured output schema."""
-        role = params.get("role", "Machine Learning Engineer")
-        company = params.get("company", "")
+        role = (params.get("role") or "").strip()
+        company = (params.get("company") or "").strip()
         location = params.get("location", "United States")
+
+        if not role:
+            return json.dumps({
+                "status": "error",
+                "error": "Missing required role for job search.",
+                "message": "Please provide a specific role/title.",
+            }, indent=2)
         
         try:
             # Build the search query
@@ -38,7 +45,7 @@ CRITICAL RULES:
 - ONLY return URLs from: company career sites, boards.greenhouse.io, jobs.lever.co, myworkdayjobs.com, icims.com, or linkedin.com/jobs/view/XXXXXXXXX
 - NEVER return: linkedin.com/posts/, linkedin.com/feed/, lnkd.in/ shortened links, or mailto: links
 - Each result must be a real, individual job posting (not a search results page)
-- Verify each job is Machine Learning related: ML Engineer, Applied ML, ML Scientist, AI Engineer, Deep Learning Engineer"""
+- Verify each result is relevant to the requested role/title and responsibilities"""
             
             # Define structured output schema
             schema = {

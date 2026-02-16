@@ -81,7 +81,7 @@ TOOLS = [
         "name": "job_searcher",
         "description": "Search for job openings at a specific company or in general. Use when the user asks to find jobs, look for positions, search openings, or mentions job hunting.",
         "parameters": {
-            "role": "The job role/title to search for (e.g., Machine Learning Engineer)",
+            "role": "The job role/title to search for",
             "company": "The company name (optional, can be empty for general search)",
             "location": "Job location preference (default: United States)",
         },
@@ -190,9 +190,9 @@ def execute_job_searcher(params: dict) -> str:
     """Execute job search using JobSearcher with structured output"""
     
     # Handle both structured params (role, company, location) and generic query
-    query_str = params.get("query", "")
-    role = params.get("role", "")
-    company = params.get("company", "")
+    query_str = (params.get("query") or "").strip()
+    role = (params.get("role") or "").strip()
+    company = (params.get("company") or "").strip()
     location = params.get("location", "United States")
     
     # If we only have a generic query, parse it for role/company/location
@@ -209,17 +209,24 @@ def execute_job_searcher(params: dict) -> str:
             if comp in query_lower:
                 company = comp.capitalize()
                 role = query_str.replace(f"in {comp}", "").replace(f"at {comp}", "").replace("jobs", "").strip()
-                if not role:
-                    role = "Software Engineer"
                 break
         
         # If no company detected, use the query as role
         if not role:
-            role = query_str if query_str else "Software Engineer"
-    
-    # Fallback
+            role = query_str
+
+    # Role is required; do not inject a default title.
     if not role:
-        role = "Machine Learning Engineer"
+        return json.dumps(
+            {
+                "status": "error",
+                "error": "Missing required role for job search.",
+                "error_type": "ValidationError",
+                "query": {"role": role, "company": company, "location": location},
+                "next_steps": "Please provide a role/title to search for (for example: 'Backend Engineer' or 'Data Analyst').",
+            },
+            indent=2,
+        )
 
     try:
         # Use JobSearcher with Browser Use structured output
