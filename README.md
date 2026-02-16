@@ -1,4 +1,4 @@
-# desktop-agent-agi
+# Pathfind AI
 
 A local-first desktop agent that can search, summarize, and orchestrate tools -- built for the Hack with DC hackathon. It keeps a privacy-friendly memory (SQLite) of conversations, artifacts, and facts for better follow-ups.
 
@@ -122,3 +122,7 @@ The app is powered by three specialized agents that work together:
 | `linkup_client.py` | Linkup API wrapper |
 | `email_handler.py` | Recruiter lookup + email drafting |
 | `requirements.txt` | Python dependencies |
+
+
+### Architecture Diagram
+<img width="683" height="547" alt="image" src="https://github.com/user-attachments/assets/e7e76054-61bc-4706-af24-0bd5f916f44d" />
