@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 import re
 
-from linkup_client import linkup_search
+from browser_use_client import browser_use_search
 
 
 @dataclass
@@ -72,14 +72,14 @@ def fetch_sample_job_descriptions(req: JobDescriptionRequest) -> Dict[str, Any]:
     )
 
     # We don’t need structured schema here — text quality matters more
-    resp = linkup_search(
+    resp = browser_use_search(
         query=query,
         depth="deep",
         output_type="searchResults",
         max_results=req.max_variants,
     )
 
-    # Normalize Linkup response
+    # Normalize Browser Use response
     if hasattr(resp, "model_dump"):
         resp = resp.model_dump()
 

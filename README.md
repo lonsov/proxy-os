@@ -50,11 +50,11 @@ cp .env.example .env
 Then open `.env` and fill in your keys:
 
 ```
-LINKUP_API_KEY=your-linkup-api-key-here
+GOOGLE_API_KEY=your-google-api-key-here
 HF_TOKEN=your-huggingface-token-here
 ```
 
-- **LINKUP_API_KEY** -- get one from [Linkup](https://www.linkup.so/)
+- **GOOGLE_API_KEY** -- get one from Google AI Studio (Gemini API key)
 - **HF_TOKEN** -- get one from [Hugging Face](https://huggingface.co/settings/tokens)
 
 You can also add your resume path so the agent knows where to find it:
@@ -96,7 +96,7 @@ The app will open in your browser automatically (usually at `http://localhost:85
 
 The app is powered by three specialized agents that work together:
 
-- **Role Search Agent** -- Searches for open job postings across the web using Linkup. You give it job titles, location, and keywords and it returns a deduplicated list of matching roles with company, URL, and requirements.
+- **Role Search Agent** -- Searches for open job postings across the web using Browser Use. You give it job titles, location, and keywords and it returns a deduplicated list of matching roles with company, URL, and requirements.
 
 - **Job Description Agent** -- Takes a selected job posting and fetches the full, clean job description text (responsibilities, requirements, skills). It can pull directly from a URL or search for the listing. Returns up to 3 variants so you can pick the best one.
 
@@ -104,7 +104,7 @@ The app is powered by three specialized agents that work together:
 
 ### Email / Recruiter Outreach
 
-- Finds recruiter contacts (name, email, LinkedIn) for a company and role using Linkup.
+- Finds recruiter contacts (name, email, LinkedIn) for a company and role using Browser Use.
 - Filters out junk emails and prefers same-company contacts.
 - Can draft personalized outreach emails using an LLM.
 - Optional Gmail integration for reading/summarizing threads (requires Google OAuth credentials).
@@ -119,7 +119,7 @@ The app is powered by three specialized agents that work together:
 | `agents/job_description_agent.py` | Fetches and cleans job descriptions |
 | `agents/resume_tailor_agent.py` | Tailors your resume to a job description |
 | `memory.py` | SQLite memory layer |
-| `linkup_client.py` | Linkup API wrapper |
+| `browser_use_client.py` | Browser Use API wrapper |
 | `email_handler.py` | Recruiter lookup + email drafting |
 | `requirements.txt` | Python dependencies |
 

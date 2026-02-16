@@ -4,14 +4,14 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 import re
 
-from linkup_client import linkup_search
+from browser_use_client import browser_use_search
 from document_handler import DocumentHandler
 
 from pydantic import BaseModel, Field
 
 
 # -------------------------
-# Role Search (Linkup)
+# Role Search (Browser Use)
 # -------------------------
 @dataclass
 class RoleSearchQuery:
@@ -62,9 +62,9 @@ def _dedupe_jobs(jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 
-def _extract_jobs_from_linkup_response(resp: Any) -> List[Dict[str, Any]]:
+def _extract_jobs_from_search_response(resp: Any) -> List[Dict[str, Any]]:
     """
-    Extract jobs from Linkup searchResults response format.
+    Extract jobs from Browser Use search response format.
     Parse job title, company, and location from URLs and content.
     """
     if hasattr(resp, "model_dump"):
@@ -191,14 +191,14 @@ def search_roles(q: RoleSearchQuery) -> Dict[str, Any]:
     # Simple, focused query for better results
     query = f"Job postings for {titles_part}{kw_part}{location_part}"
 
-    resp = linkup_search(
+    resp = browser_use_search(
         query=query,
         depth="standard",
         output_type="searchResults",
         max_results=q.max_results,
     )
 
-    jobs = _extract_jobs_from_linkup_response(resp)
+    jobs = _extract_jobs_from_search_response(resp)
     jobs = _dedupe_jobs(jobs)
 
     return {
@@ -343,7 +343,7 @@ def recommend_jobs_for_resume(
         return {
             "status": "ok",
             "type": "job_recommendations",
-            "summary": "No job postings retrieved from Linkup.",
+            "summary": "No job postings retrieved from Browser Use.",
             "data": {
                 "resume_path": resume_path,
                 "resume_skills_used": keywords or [],
