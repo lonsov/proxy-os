@@ -6,7 +6,6 @@ import asyncio
 import json
 import os
 from dataclasses import dataclass
-from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -213,3 +212,10 @@ def browser_use_search(
         **kwargs,
     )
 
+
+__all__ = [
+    "BrowserUseClient",
+    "BrowserUseSource",
+    "BrowserUseSourcedAnswer",
+    "browser_use_search",
+]

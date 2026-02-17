@@ -19,7 +19,7 @@ class DocumentHandler:
 
         doc_type:
           - "resume" (explicit)
-          - None → inferred by filename for now (simple heuristic)
+          - None -> inferred by filename for now (simple heuristic)
 
         For non-resume docs, falls back to generic local text extraction.
         """
@@ -73,9 +73,12 @@ class DocumentHandler:
     def _infer_doc_type(filename: str) -> str:
         """
         Very light heuristic for now.
-        We’ll improve later using content-based classification.
+        We'll improve later using content-based classification.
         """
         name = filename.lower()
         if "resume" in name or "cv" in name:
             return "resume"
         return "unknown"
+
+
+__all__ = ["DocumentHandler"]

@@ -1,3 +1,5 @@
+"""Company research agent for structured, citation-backed company reports."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -1064,3 +1066,5 @@ class CompanyResearchAgent:
             "- Cite each bullet.\n"
         )
 
+
+__all__ = ["CompanyResearchAgent", "CompanyResearchDefaults", "JobPostingIntake"]

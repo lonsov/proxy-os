@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import re
 from pathlib import Path
 
-from document_handler import DocumentHandler
-from browser_use_client import browser_use_search
+from handlers.document_handler import DocumentHandler
+from clients.browser_use_client import browser_use_search
 from document.pdf_export import export_resume_to_pdf_ats
 
 # Optional DOCX export

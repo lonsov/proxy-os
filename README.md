@@ -119,8 +119,8 @@ The app is powered by three specialized agents that work together:
 | `agents/job_description_agent.py` | Fetches and cleans job descriptions |
 | `agents/resume_tailor_agent.py` | Tailors your resume to a job description |
 | `memory.py` | SQLite memory layer |
-| `browser_use_client.py` | Browser Use API wrapper |
-| `email_handler.py` | Recruiter lookup + email drafting |
+| `clients/browser_use_client.py` | Browser Use API wrapper |
+| `handlers/email_handler.py` | Recruiter lookup + email drafting |
 | `requirements.txt` | Python dependencies |
 
 

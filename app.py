@@ -16,12 +16,12 @@ except ModuleNotFoundError:
     InferenceClient = None
 
 import memory
-from browser_use_client import BrowserUseClient
-from company_research_agent import CompanyResearchAgent, JobPostingIntake
+from clients.browser_use_client import BrowserUseClient
+from agents.company_research_agent import CompanyResearchAgent, JobPostingIntake
 from agents.resume_tailor_agent import TailorRequest, tailor_resume, _fetch_job_description_if_url
 from agents.role_search_agent import search_roles, RoleSearchQuery
-from job_searcher import JobSearcher
-from document_handler import DocumentHandler
+from agents.job_search_agent import JobSearchAgent
+from handlers.document_handler import DocumentHandler
 
 # from utils import load_resume_from_env
 
@@ -193,7 +193,7 @@ IMPORTANT RULES FOR TOOL CALLING:
 # ------------------------------------------------------------------ #
 
 def execute_job_searcher(params: dict) -> str:
-    """Execute job search using JobSearcher with structured output"""
+    """Execute job search using JobSearchAgent with structured output."""
     
     # Use structured search metadata collected from intake.
     role = (params.get("role") or "").strip()
@@ -245,8 +245,8 @@ def execute_job_searcher(params: dict) -> str:
         )
 
     try:
-        # Use JobSearcher with Browser Use structured output
-        searcher = JobSearcher()
+        # Use JobSearchAgent with Browser Use structured output.
+        searcher = JobSearchAgent()
         result_json = searcher.execute_search({
             "role": role,
             "company": company,
@@ -531,7 +531,7 @@ Best regards,
 
 
 def execute_email_crafter(params: dict) -> str:
-    """Draft email to recruiter using email_handler"""
+    """Draft email to recruiter using handlers.email_handler"""
     try:
         # Get context with selected_job (if available)
         context = params.get("context") or {}
@@ -574,10 +574,10 @@ def execute_email_crafter(params: dict) -> str:
         additional_context = (params.get("additional_context") or "").strip()
 
         # Initialize email handler
-        from email_handler import EmailHandler
+        from handlers.email_handler import EmailHandler
         email_handler = EmailHandler(hf_token=os.getenv("HF_TOKEN"))
 
-        # Create thread_data for email_handler function
+        # Create thread_data for email agent function
         thread_data = {
             "threadId": "",
             "messages": [],
@@ -589,7 +589,7 @@ def execute_email_crafter(params: dict) -> str:
             "combined_body": "",
         }
 
-        # Draft using email_handler
+        # Draft using email agent
         draft_body = email_handler.draft_reply_to_recruiter_thread(
             thread_data=thread_data,
             job_description=job_description,
@@ -624,7 +624,7 @@ def execute_email_crafter(params: dict) -> str:
         return json.dumps({
             "status": "error",
             "error": f"{error_type}: {str(e)}",
-            "message": "Failed to draft email. Ensure HF_TOKEN is set and email_handler is properly configured.",
+            "message": "Failed to draft email. Ensure HF_TOKEN is set and handlers.email_handler is properly configured.",
         }, indent=2)
 
 
@@ -681,7 +681,7 @@ def execute_recruiter_finder(params: dict) -> str:
                     except Exception:
                         resume_text = ""
 
-        from email_handler import EmailHandler
+        from handlers.email_handler import EmailHandler
         email_handler = EmailHandler(hf_token=os.getenv("HF_TOKEN"))
 
         if job_description and resume_text:

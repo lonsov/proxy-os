@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 import re
 
-from browser_use_client import browser_use_search
-from document_handler import DocumentHandler
+from clients.browser_use_client import browser_use_search
+from handlers.document_handler import DocumentHandler
 
 from pydantic import BaseModel, Field
 

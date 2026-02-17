@@ -423,8 +423,8 @@ class Memory:
     """
     Lightweight wrapper around the functional memory module.
 
-    This exists for compatibility with components (e.g., AgentCore/app.py)
-    that expect a Memory object rather than free functions.
+    This exists for compatibility with components that expect a Memory
+    object rather than free functions.
     """
 
     def __init__(self, db_path: Optional[Union[str, Path]] = None):

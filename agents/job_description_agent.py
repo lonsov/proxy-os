@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 import re
 
-from browser_use_client import browser_use_search
+from clients.browser_use_client import browser_use_search
 
 
 @dataclass
