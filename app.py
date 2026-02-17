@@ -83,7 +83,13 @@ TOOLS = [
         "parameters": {
             "role": "The job role/title to search for",
             "company": "The company name (optional, can be empty for general search)",
-            "location": "Job location preference (default: United States)",
+            "location": "Job location preference (optional)",
+            "experience_level": "Preferred seniority level (optional): entry, mid, senior, lead, staff",
+            "job_type": "Preferred job type (optional): full-time, contract, internship, part-time",
+            "work_mode": "Preferred work mode (optional): remote, hybrid, onsite",
+            "skills_keywords": "Comma-separated must-have keywords/skills (optional)",
+            "exclude_keywords": "Comma-separated keywords to exclude (optional)",
+            "posted_within_days": "Only include jobs posted within N days (optional)",
         },
         "triggers": ["find jobs", "search jobs", "job openings", "positions at", "hiring", "show me jobs", "look for roles"],
     },
@@ -189,31 +195,31 @@ IMPORTANT RULES FOR TOOL CALLING:
 def execute_job_searcher(params: dict) -> str:
     """Execute job search using JobSearcher with structured output"""
     
-    # Handle both structured params (role, company, location) and generic query
-    query_str = (params.get("query") or "").strip()
+    # Use structured search metadata collected from intake.
     role = (params.get("role") or "").strip()
     company = (params.get("company") or "").strip()
-    location = params.get("location", "United States")
-    
-    # If we only have a generic query, parse it for role/company/location
-    if query_str and not role:
-        # Extract keywords from generic query
-        # e.g., "machine learning engineer jobs in google" -> role="machine learning engineer", company="google"
-        query_lower = query_str.lower()
-        
-        # Common company names
-        companies = ["google", "amazon", "microsoft", "meta", "apple", "netflix", "tesla", "stripe", "airbnb"]
-        
-        # Detect company
-        for comp in companies:
-            if comp in query_lower:
-                company = comp.capitalize()
-                role = query_str.replace(f"in {comp}", "").replace(f"at {comp}", "").replace("jobs", "").strip()
-                break
-        
-        # If no company detected, use the query as role
-        if not role:
-            role = query_str
+    location = (params.get("location") or "").strip()
+    experience_level = (params.get("experience_level") or "").strip()
+    job_type = (params.get("job_type") or "").strip()
+    work_mode = (params.get("work_mode") or "").strip()
+    posted_within_days = params.get("posted_within_days")
+
+    skills_keywords = params.get("skills_keywords")
+    if isinstance(skills_keywords, list):
+        skills_keywords = ", ".join(str(k).strip() for k in skills_keywords if str(k).strip())
+    else:
+        skills_keywords = (skills_keywords or "").strip()
+
+    exclude_keywords = params.get("exclude_keywords")
+    if isinstance(exclude_keywords, list):
+        exclude_keywords = ", ".join(str(k).strip() for k in exclude_keywords if str(k).strip())
+    else:
+        exclude_keywords = (exclude_keywords or "").strip()
+
+    try:
+        posted_within_days = int(str(posted_within_days).strip()) if str(posted_within_days).strip() else None
+    except (TypeError, ValueError):
+        posted_within_days = None
 
     # Role is required; do not inject a default title.
     if not role:
@@ -222,8 +228,18 @@ def execute_job_searcher(params: dict) -> str:
                 "status": "error",
                 "error": "Missing required role for job search.",
                 "error_type": "ValidationError",
-                "query": {"role": role, "company": company, "location": location},
-                "next_steps": "Please provide a role/title to search for (for example: 'Backend Engineer' or 'Data Analyst').",
+                "query": {
+                    "role": role,
+                    "company": company,
+                    "location": location,
+                    "experience_level": experience_level,
+                    "job_type": job_type,
+                    "work_mode": work_mode,
+                    "skills_keywords": skills_keywords,
+                    "exclude_keywords": exclude_keywords,
+                    "posted_within_days": posted_within_days,
+                },
+                "next_steps": "Please provide your job search metadata and include a role/title before searching.",
             },
             indent=2,
         )
@@ -235,6 +251,12 @@ def execute_job_searcher(params: dict) -> str:
             "role": role,
             "company": company,
             "location": location,
+            "experience_level": experience_level,
+            "job_type": job_type,
+            "work_mode": work_mode,
+            "skills_keywords": skills_keywords,
+            "exclude_keywords": exclude_keywords,
+            "posted_within_days": posted_within_days,
         })
         
         # Parse the result
@@ -262,7 +284,17 @@ def execute_job_searcher(params: dict) -> str:
         return json.dumps(
             {
                 "status": "success",
-                "query": {"role": role, "company": company, "location": location},
+                "query": {
+                    "role": role,
+                    "company": company,
+                    "location": location,
+                    "experience_level": experience_level,
+                    "job_type": job_type,
+                    "work_mode": work_mode,
+                    "skills_keywords": skills_keywords,
+                    "exclude_keywords": exclude_keywords,
+                    "posted_within_days": posted_within_days,
+                },
                 "search_results_count": len(jobs_list),
                 "jobs_found": len(jobs_list),
                 "jobs": jobs_list,
@@ -285,7 +317,17 @@ def execute_job_searcher(params: dict) -> str:
                 "status": "error",
                 "error": str(e),
                 "error_type": error_type,
-                "query": {"role": role, "company": company, "location": location},
+                "query": {
+                    "role": role,
+                    "company": company,
+                    "location": location,
+                    "experience_level": experience_level,
+                    "job_type": job_type,
+                    "work_mode": work_mode,
+                    "skills_keywords": skills_keywords,
+                    "exclude_keywords": exclude_keywords,
+                    "posted_within_days": posted_within_days,
+                },
             },
             indent=2,
         )
@@ -760,6 +802,7 @@ class JobAgent:
         self.awaiting_job_selection = False
         self.awaiting_jd_text = False
         self.awaiting_email_jd_link = False
+        self.awaiting_job_search_metadata = False
 
         # Track files generated during the last chat() call for the UI to pick up.
         self.last_generated_files: list[dict] = []
@@ -946,6 +989,74 @@ class JobAgent:
                     return candidate
         return ""
 
+    def _is_job_search_request(self, message: str) -> bool:
+        lowered = (message or "").lower()
+        if any(phrase in lowered for phrase in ("research company", "company profile", "tailor", "resume", "cover letter", "draft email", "find recruiter")):
+            return False
+        keyword_match = any(
+            phrase in lowered
+            for phrase in (
+                "find jobs",
+                "search jobs",
+                "job search",
+                "job openings",
+                "open roles",
+                "open positions",
+                "look for jobs",
+                "show me jobs",
+                "hiring roles",
+                "positions for",
+            )
+        )
+        regex_match = bool(
+            re.search(r"\b(find|search|look|show)\b.*\b(job|jobs|roles|positions|openings)\b", lowered)
+            or re.search(r"\b(job|jobs|roles|positions|openings)\b.*\b(for|at|in)\b", lowered)
+        )
+        return keyword_match or regex_match
+
+    def _job_search_metadata_prompt(self) -> str:
+        return (
+            "Before I run job search, please fill in these fields so I can search with complete metadata.\n\n"
+            "Reply in this format:\n"
+            "role: \n"
+            "company: \n"
+            "location: \n"
+            "experience_level: \n"
+            "job_type: \n"
+            "work_mode: \n"
+            "skills_keywords: \n"
+            "exclude_keywords: \n"
+            "posted_within_days: \n\n"
+            "Notes:\n"
+            "- `role` is required.\n"
+            "- Leave optional fields blank if you do not care.\n"
+            "- Say `cancel` to stop this search."
+        )
+
+    def _parse_job_search_metadata(self, user_message: str) -> dict:
+        text = (user_message or "").strip()
+        if not text:
+            return {}
+
+        # Support JSON form input.
+        if text.startswith("{") and text.endswith("}"):
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, dict):
+                    return {str(k).strip().lower(): parsed[k] for k in parsed}
+            except json.JSONDecodeError:
+                pass
+
+        parsed: dict[str, str] = {}
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line or ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            key_norm = key.strip().lower().replace(" ", "_")
+            parsed[key_norm] = value.strip()
+        return parsed
+
     def _load_sample_jd_text(self) -> str | None:
         try:
             here = Path(__file__).resolve().parent
@@ -964,6 +1075,16 @@ class JobAgent:
                     if isinstance(alias_value, str) and alias_value.strip():
                         normalized["role"] = alias_value.strip()
                         break
+            if "workmode" in normalized and "work_mode" not in normalized:
+                normalized["work_mode"] = normalized.get("workmode")
+            if "skills" in normalized and "skills_keywords" not in normalized:
+                normalized["skills_keywords"] = normalized.get("skills")
+            if "must_have_keywords" in normalized and "skills_keywords" not in normalized:
+                normalized["skills_keywords"] = normalized.get("must_have_keywords")
+            if "exclude" in normalized and "exclude_keywords" not in normalized:
+                normalized["exclude_keywords"] = normalized.get("exclude")
+            if "days" in normalized and "posted_within_days" not in normalized:
+                normalized["posted_within_days"] = normalized.get("days")
         if tool_name == "company_profiler":
             company_value = normalized.get("company")
             if not (isinstance(company_value, str) and company_value.strip()):
@@ -1409,6 +1530,56 @@ class JobAgent:
             )
             memory.store_turn(self.session_id, role="assistant", text=msg, user_id=self.user_id)
             return msg
+
+        if self.awaiting_job_search_metadata:
+            lowered_message = user_message.lower().strip()
+            if lowered_message in {"cancel", "stop", "nevermind", "never mind"}:
+                self.awaiting_job_search_metadata = False
+                msg = "Job search cancelled. Tell me whenever you want to start a new search."
+                memory.store_turn(self.session_id, role="assistant", text=msg, user_id=self.user_id)
+                return msg
+
+            metadata = self._parse_job_search_metadata(user_message)
+            role = str(metadata.get("role") or "").strip()
+            if not role:
+                msg = (
+                    "I still need `role` to run the search.\n\n"
+                    f"{self._job_search_metadata_prompt()}"
+                )
+                memory.store_turn(self.session_id, role="assistant", text=msg, user_id=self.user_id)
+                return msg
+
+            company = str(metadata.get("company") or "").strip()
+            location = str(metadata.get("location") or "").strip()
+            experience_level = str(metadata.get("experience_level") or "").strip()
+            job_type = str(metadata.get("job_type") or "").strip()
+            work_mode = str(metadata.get("work_mode") or "").strip()
+            skills_keywords = str(metadata.get("skills_keywords") or "").strip()
+            exclude_keywords = str(metadata.get("exclude_keywords") or "").strip()
+
+            posted_within_days_raw = metadata.get("posted_within_days")
+            try:
+                posted_within_days = int(str(posted_within_days_raw).strip()) if str(posted_within_days_raw).strip() else None
+            except (TypeError, ValueError):
+                posted_within_days = None
+
+            self.awaiting_job_search_metadata = False
+            return self._execute_tool_and_respond(
+                tool_name="job_searcher",
+                params={
+                    "role": role,
+                    "company": company,
+                    "location": location,
+                    "experience_level": experience_level,
+                    "job_type": job_type,
+                    "work_mode": work_mode,
+                    "skills_keywords": skills_keywords,
+                    "exclude_keywords": exclude_keywords,
+                    "posted_within_days": posted_within_days,
+                },
+                reasoning="Collected structured job-search metadata from user before executing search.",
+                user_message=user_message,
+            )
         
         if self.awaiting_job_selection and user_message.isdigit():
             last_jobs = self.context_store.get("last_jobs") or {}
@@ -1545,6 +1716,12 @@ class JobAgent:
                 msg = "Please select a job first (search and pick one), or tell me which company and role to find recruiters for."
                 memory.store_turn(self.session_id, role="assistant", text=msg, user_id=self.user_id)
                 return msg
+
+        if self._is_job_search_request(user_message):
+            self.awaiting_job_search_metadata = True
+            msg = self._job_search_metadata_prompt()
+            memory.store_turn(self.session_id, role="assistant", text=msg, user_id=self.user_id)
+            return msg
 
         # ---- Check for email drafting without a selected job ----
         has_email_request = any(k in lowered for k in ("outreach", "cold email", "message", "email", "draft email"))

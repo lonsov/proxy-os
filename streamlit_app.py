@@ -147,6 +147,7 @@ with st.sidebar:
         agent.awaiting_job_selection = False
         agent.awaiting_jd_text = False
         agent.awaiting_email_jd_link = False
+        agent.awaiting_job_search_metadata = False
         st.session_state.messages = []
         st.rerun()
 
@@ -187,6 +188,61 @@ def parse_job_list(response: str) -> tuple[str, list[dict]]:
         jobs = last_jobs.get("jobs", [])
     header = response.split("\n")[0] if response else ""
     return header, jobs
+
+
+def render_job_search_metadata_form() -> tuple[bool, str]:
+    """Render structured job-search metadata form and return (submitted, payload)."""
+    with st.expander("🔎 Complete Job Search Filters", expanded=True):
+        st.caption("Fill this once, then I will run the search automatically.")
+        with st.form("job_search_metadata_form", clear_on_submit=False):
+            role = st.text_input("Role (required)", placeholder="e.g., Machine Learning Engineer")
+            company = st.text_input("Company (optional)", placeholder="e.g., OpenAI")
+            location = st.text_input("Location (optional)", value="", placeholder="e.g., San Francisco, CA or Remote")
+            experience_level = st.selectbox(
+                "Experience Level",
+                options=["", "entry", "mid", "senior", "lead", "staff"],
+                index=0,
+            )
+            job_type = st.selectbox(
+                "Job Type",
+                options=["", "full-time", "contract", "internship", "part-time"],
+                index=0,
+            )
+            work_mode = st.selectbox(
+                "Work Mode",
+                options=["", "remote", "hybrid", "onsite"],
+                index=0,
+            )
+            skills_keywords = st.text_input(
+                "Must-have Skills/Keywords",
+                placeholder="e.g., python, llms, pytorch",
+            )
+            exclude_keywords = st.text_input(
+                "Exclude Keywords",
+                placeholder="e.g., manager, director",
+            )
+            posted_within_days = st.text_input(
+                "Posted Within (days, optional)",
+                value="",
+                placeholder="e.g., 7",
+            )
+
+            submitted = st.form_submit_button("Run Job Search", use_container_width=True)
+            if not submitted:
+                return False, ""
+
+            payload = (
+                f"role: {role}\n"
+                f"company: {company}\n"
+                f"location: {location}\n"
+                f"experience_level: {experience_level}\n"
+                f"job_type: {job_type}\n"
+                f"work_mode: {work_mode}\n"
+                f"skills_keywords: {skills_keywords}\n"
+                f"exclude_keywords: {exclude_keywords}\n"
+                f"posted_within_days: {posted_within_days}"
+            )
+            return True, payload
 
 
 # ------------------------------------------------------------------ #
@@ -295,10 +351,47 @@ if prompt := st.chat_input("Ask me anything about jobs, companies, resumes...", 
             })
         else:
             # Regular text response
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            display_response = response
+            if getattr(agent, "awaiting_job_search_metadata", False) and response.startswith("Before I run job search"):
+                display_response = "Please complete the job search fields below."
+            st.markdown(display_response)
+            st.session_state.messages.append({"role": "assistant", "content": display_response})
 
-    st.rerun()
+# Persistent job-search metadata form: always shown while agent is waiting.
+if getattr(agent, "awaiting_job_search_metadata", False):
+    with st.chat_message("assistant", avatar="🤖"):
+        submitted, form_payload = render_job_search_metadata_form()
+        if submitted:
+            st.session_state.messages.append({
+                "role": "user",
+                "content": "Submitted job search filters via form.",
+            })
+            with st.spinner("Running job search..."):
+                form_response, form_progress = run_agent_chat(form_payload)
+
+            if form_progress.strip():
+                progress_lines = []
+                skip_block = False
+                for line in form_progress.strip().split("\n"):
+                    stripped = line.strip()
+                    if "🧭 DEBUG LOG" in stripped or "=" * 40 in stripped:
+                        skip_block = True
+                        continue
+                    if skip_block:
+                        if stripped.startswith("="):
+                            skip_block = False
+                        continue
+                    if stripped and any(e in stripped for e in ("🔍", "📊", "💬", "✅", "❌", "🏢", "📄", "📧", "👤", "🔎")):
+                        progress_lines.append(stripped)
+                if progress_lines:
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": "\n".join(progress_lines),
+                        "type": "progress",
+                    })
+
+            st.session_state.messages.append({"role": "assistant", "content": form_response})
+            st.rerun()
 
 
 # ------------------------------------------------------------------ #

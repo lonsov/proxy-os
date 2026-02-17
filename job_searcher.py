@@ -23,7 +23,26 @@ class JobSearcher:
         """Execute job search with structured output schema."""
         role = (params.get("role") or "").strip()
         company = (params.get("company") or "").strip()
-        location = params.get("location", "United States")
+        location = (params.get("location") or "").strip()
+        experience_level = (params.get("experience_level") or "").strip()
+        job_type = (params.get("job_type") or "").strip()
+        work_mode = (params.get("work_mode") or "").strip()
+        skills_keywords = params.get("skills_keywords")
+        exclude_keywords = params.get("exclude_keywords")
+        posted_within_days = params.get("posted_within_days")
+
+        if isinstance(skills_keywords, list):
+            skills_keywords = ", ".join(str(k).strip() for k in skills_keywords if str(k).strip())
+        else:
+            skills_keywords = (skills_keywords or "").strip()
+        if isinstance(exclude_keywords, list):
+            exclude_keywords = ", ".join(str(k).strip() for k in exclude_keywords if str(k).strip())
+        else:
+            exclude_keywords = (exclude_keywords or "").strip()
+        try:
+            posted_within_days = int(posted_within_days) if str(posted_within_days).strip() else None
+        except (TypeError, ValueError):
+            posted_within_days = None
 
         if not role:
             return json.dumps({
@@ -34,9 +53,26 @@ class JobSearcher:
         
         try:
             # Build the search query
-            query = f"Search for {role} job listings on official company career pages and job board platforms (NOT LinkedIn posts or feed). Find positions at major tech companies in the {location} posted within the last 7 days."
+            query = (
+                f"Search for {role} job listings on official company career pages and job board platforms "
+                "(NOT LinkedIn posts or feed)."
+            )
+            if location:
+                query += f" Prefer positions in {location}."
+            if posted_within_days is not None:
+                query += f" Focus on jobs posted within the last {posted_within_days} days."
             if company:
                 query += f" Prioritize {company} positions."
+            if experience_level:
+                query += f" Prefer {experience_level} level roles."
+            if job_type:
+                query += f" Job type preference: {job_type}."
+            if work_mode:
+                query += f" Work mode preference: {work_mode}."
+            if skills_keywords:
+                query += f" Must include these keywords when possible: {skills_keywords}."
+            if exclude_keywords:
+                query += f" Exclude roles containing these keywords: {exclude_keywords}."
             
             query += """
 
